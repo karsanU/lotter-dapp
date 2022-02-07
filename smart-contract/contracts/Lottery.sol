@@ -10,9 +10,9 @@ contract Lottery {
     address payable public owner;
     IERC20 public bbt;
     address[2] public mangers;
-    address payable[] public players;
+    address[] public entries;
     uint256 public ticketPrice;
-    uint256 public currPool;
+    uint256 public pricePool;
     uint256 public lastDarwTime;
 
     constructor(IERC20 token) {
@@ -21,6 +21,17 @@ contract Lottery {
         bbt = token;
         ticketPrice = 25;
         lastDarwTime = block.timestamp;
+    }
+
+    function setManger(bool firstManager, address newMaanagerAddress)
+        public
+        ownerAcess
+    {
+        if (firstManager) {
+            mangers[0] = newMaanagerAddress;
+        } else {
+            mangers[1] = newMaanagerAddress;
+        }
     }
 
     function setTicketPrice(uint256 _ticketPrice) public ownerAcess {
@@ -32,18 +43,18 @@ contract Lottery {
         /// transfer the tokens to lottery contract
         bbt.transferFrom(msg.sender, address(this), ticketPrice * _totalTikets);
         /// add tokens to the current pool
-        currPool = ticketPrice * _totalTikets;
+        pricePool = pricePool + ((ticketPrice * _totalTikets * 95) / 100);
         /// enter the user _totalTikets number of times
         for (uint256 i = 0; i < _totalTikets; i++) {
-            players.push(payable(msg.sender));
+            entries.push(msg.sender);
         }
     }
 
     function draw() public fiveMinsPassed managerAcess {
-        uint256 index = random() % players.length;
-        address payable _winner = (players[index]);
-        players = new address payable[](0);
-        _winner.transfer(address(this).balance);
+        uint256 index = random() % entries.length;
+        address _winner = (entries[index]);
+        entries = new address payable[](0);
+        bbt.transfer(_winner, pricePool);
     }
 
     modifier ownerAcess() {
@@ -65,7 +76,7 @@ contract Lottery {
         return
             uint256(
                 keccak256(
-                    abi.encodePacked(block.difficulty, block.timestamp, players)
+                    abi.encodePacked(block.difficulty, block.timestamp, entries)
                 )
             );
     }
