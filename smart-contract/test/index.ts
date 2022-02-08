@@ -55,12 +55,14 @@ describe("Lottery Contract", function () {
       "BigBoyToken"
     )) as BigBoyToken__factory;
     bigBoyToken = await Token.deploy();
+    await bigBoyToken.deployed();
 
     // deploy lotto
     const Lottery = (await ethers.getContractFactory(
       "Lottery"
     )) as Lottery__factory;
     lottery = await Lottery.deploy(bigBoyToken.address);
+    await lottery.deployed();
 
     // set managers
     await lottery.setManger(true, manager1.address);

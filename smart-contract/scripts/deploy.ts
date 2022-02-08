@@ -13,12 +13,16 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
-  // We get the contract to deploy
+  // deploy token
+  const Token = await ethers.getContractFactory("BigBoyToken");
+  const bigBoyToken = await Token.deploy();
+  await bigBoyToken.deployed();
+  console.log("Token deployed to:", bigBoyToken.address);
+
+  // deploy lotto
   const Lottery = await ethers.getContractFactory("Lottery");
-  const lottery = await Lottery.deploy("Hello, Hardhat!");
-
+  const lottery = await Lottery.deploy(bigBoyToken.address);
   await lottery.deployed();
-
   console.log("Lottery deployed to:", lottery.address);
 }
 
