@@ -25,26 +25,31 @@ describe("BBT Token Contract", function () {
 
 let bigBoyToken: BigBoyToken;
 let lottery: Lottery;
-let owner: SignerWithAddress;
 let manager1: SignerWithAddress;
 let manager2: SignerWithAddress;
 let addrs: SignerWithAddress[];
 
 // helper functions
-async function buy1TicketWithAddrs0() {
-  bigBoyToken.connect(addrs[0]).approve(lottery.address, 25);
-  await lottery.connect(addrs[0]).enter(1);
+async function buy1TicketWithAddrs(addressIndex: number) {
+  bigBoyToken.connect(addrs[addressIndex]).approve(lottery.address, 25);
+  await lottery.connect(addrs[addressIndex]).enter(1);
 }
 
-async function buy20TicketWithAddrs1() {
-  bigBoyToken.connect(addrs[1]).approve(lottery.address, 25 * 20);
-  await lottery.connect(addrs[1]).enter(20);
+async function buy20TicketWithAddrs(addressIndex: number) {
+  bigBoyToken.connect(addrs[addressIndex]).approve(lottery.address, 25 * 20);
+  await lottery.connect(addrs[addressIndex]).enter(20);
+}
+
+async function increaseBlockTimeBy5mins() {
+  await ethers.provider.send("evm_increaseTime", [60 * 5]);
 }
 
 describe("Lottery Contract", function () {
   beforeEach(async () => {
     // get the accounts
-    [owner, manager1, manager1, ...addrs] = await ethers.getSigners();
+    const signers = await ethers.getSigners();
+    signers.shift();
+    [manager1, manager2, ...addrs] = signers;
     // deploy token
     const Token = (await ethers.getContractFactory(
       "BigBoyToken"
@@ -57,9 +62,11 @@ describe("Lottery Contract", function () {
     )) as Lottery__factory;
     lottery = await Lottery.deploy(bigBoyToken.address);
 
+    // set managers
+    await lottery.setManger(true, manager1.address);
+    await lottery.setManger(false, manager2.address);
+
     // send some bbt to everyone
-    const signers = await ethers.getSigners();
-    signers.shift();
     signers.forEach(async (wallet: SignerWithAddress) => {
       await bigBoyToken.transfer(wallet.address, 10000);
     });
@@ -69,7 +76,18 @@ describe("Lottery Contract", function () {
     expect(await lottery.bbt()).to.equal(bigBoyToken.address);
   });
 
-  it("sets managers", async () => {
+  it("owner sets manager1 and manager2", async () => {
+    expect(await lottery.mangers(0)).to.equal(manager1.address);
+    expect(await lottery.mangers(1)).to.equal(manager2.address);
+  });
+
+  it("doesn't let non-owner change the managers", async () => {
+    await expect(
+      lottery.connect(addrs[0]).setManger(true, manager1.address)
+    ).to.be.revertedWith("Sender is not owner.");
+  });
+
+  it("correctly sets token for pricePool", async () => {
     expect(await lottery.bbt()).to.equal(bigBoyToken.address);
   });
 
@@ -89,9 +107,9 @@ describe("Lottery Contract", function () {
   });
 
   it("lets someone enter the lottery", async () => {
-    await buy1TicketWithAddrs0();
+    await buy1TicketWithAddrs(0);
     expect(await lottery.entries(0)).to.equal(addrs[0].address);
-    await buy20TicketWithAddrs1();
+    await buy20TicketWithAddrs(1);
     expect(await lottery.entries(20)).to.equal(addrs[1].address);
   });
 
@@ -102,20 +120,40 @@ describe("Lottery Contract", function () {
     );
   });
 
-  it("correctly sets the pool", async () => {
-    await buy1TicketWithAddrs0();
+  it("correctly sets the pricePool", async () => {
+    await buy1TicketWithAddrs(0);
+    expect((await lottery.pricePool())._hex).to.equal(BigNumber.from(25));
+    await buy20TicketWithAddrs(1);
     expect((await lottery.pricePool())._hex).to.equal(
-      BigNumber.from(Math.floor((25 * 95) / 100))
-    );
-    await buy20TicketWithAddrs1();
-    expect((await lottery.pricePool())._hex).to.equal(
-      BigNumber.from(
-        Math.floor((25 * 95) / 100) + Math.floor((25 * 20 * 95) / 100)
-      )
+      BigNumber.from(25 + 25 * 20)
     );
   });
-  it("only lets manager/owner draw the lotto ", async () => {});
-  it("", async () => {});
-  it("", async () => {});
-  it("", async () => {});
+  it("lets only manager/owner draw the lotto ", async () => {
+    await buy20TicketWithAddrs(0);
+    await buy20TicketWithAddrs(1);
+    await buy20TicketWithAddrs(2);
+    increaseBlockTimeBy5mins();
+    await expect(lottery.connect(addrs[0]).draw()).to.be.revertedWith(
+      "Sender is not manager"
+    );
+    // manager 1 draws lotto
+    await lottery.connect(manager1).draw();
+    expect(await lottery.pricePool()).to.be.equal(0);
+  });
+
+  it("only allows lotto to be drawn 5 mins after the last draw", async () => {
+    await buy20TicketWithAddrs(0);
+    await buy20TicketWithAddrs(1);
+    await buy20TicketWithAddrs(2);
+    await expect(lottery.draw()).to.be.revertedWith("5 minutes has to pass.");
+
+    increaseBlockTimeBy5mins();
+    await lottery.draw();
+    const someoneGotThePricePool = [0, 1, 2].some(async (index) => {
+      const balance = await bigBoyToken.balanceOf(addrs[index].address);
+      return balance === BigNumber.from((60 * 25 * 100) / 95);
+    });
+
+    expect(someoneGotThePricePool).to.equal(true);
+  });
 });

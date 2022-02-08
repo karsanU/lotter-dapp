@@ -13,14 +13,14 @@ contract Lottery {
     address[] public entries;
     uint256 public ticketPrice;
     uint256 public pricePool;
-    uint256 public lastDarwTime;
+    uint256 public lastDrawTime;
 
     constructor(IERC20 token) {
         console.log("Deploying Lotterty. Owner: ", msg.sender);
         owner = payable(msg.sender);
         bbt = token;
         ticketPrice = 25;
-        lastDarwTime = block.timestamp;
+        lastDrawTime = block.timestamp;
     }
 
     function setManger(bool firstManager, address newMaanagerAddress)
@@ -43,7 +43,7 @@ contract Lottery {
         /// transfer the tokens to lottery contract
         bbt.transferFrom(msg.sender, address(this), ticketPrice * _totalTikets);
         /// add tokens to the current pool
-        pricePool = pricePool + ((ticketPrice * _totalTikets * 95) / 100);
+        pricePool = pricePool + (ticketPrice * _totalTikets);
         /// enter the user _totalTikets number of times
         for (uint256 i = 0; i < _totalTikets; i++) {
             entries.push(msg.sender);
@@ -51,10 +51,25 @@ contract Lottery {
     }
 
     function draw() public fiveMinsPassed managerAcess {
+        // pick the sudo winner
         uint256 index = random() % entries.length;
         address _winner = (entries[index]);
+        // set the last drawn ltiem
         entries = new address payable[](0);
-        bbt.transfer(_winner, pricePool);
+        lastDrawTime = block.timestamp;
+        // send the coind to the winner after 5% maintaiance fee
+        bbt.transfer(_winner, (pricePool * 95) / 100);
+        // reset pricePool
+        pricePool = 0;
+    }
+
+    function random() private view returns (uint256) {
+        return
+            uint256(
+                keccak256(
+                    abi.encodePacked(block.difficulty, block.timestamp, entries)
+                )
+            );
     }
 
     modifier ownerAcess() {
@@ -72,18 +87,9 @@ contract Lottery {
         _;
     }
 
-    function random() private view returns (uint256) {
-        return
-            uint256(
-                keccak256(
-                    abi.encodePacked(block.difficulty, block.timestamp, entries)
-                )
-            );
-    }
-
     modifier fiveMinsPassed() {
         require(
-            lastDarwTime + 5 minutes < block.timestamp,
+            lastDrawTime + 5 minutes < block.timestamp,
             "5 minutes has to pass."
         );
         _;
