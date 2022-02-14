@@ -7,9 +7,15 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Snapshot.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-contract BigBoyToken is ERC20, ERC20Burnable, ERC20Snapshot, Ownable, ERC20Permit {
+contract BigBoyToken is
+    ERC20,
+    ERC20Burnable,
+    ERC20Snapshot,
+    Ownable,
+    ERC20Permit
+{
     constructor() ERC20("BigBoyToken", "BBT") ERC20Permit("BigBoyToken") {
-        _mint(msg.sender, 1000000 * 10 ** decimals());
+        _mint(msg.sender, 1000000);
     }
 
     function snapshot() public onlyOwner {
@@ -22,10 +28,11 @@ contract BigBoyToken is ERC20, ERC20Burnable, ERC20Snapshot, Ownable, ERC20Permi
 
     // The following functions are overrides required by Solidity.
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount)
-        internal
-        override(ERC20, ERC20Snapshot)
-    {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override(ERC20, ERC20Snapshot) {
         super._beforeTokenTransfer(from, to, amount);
     }
 }

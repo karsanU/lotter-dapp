@@ -5,9 +5,11 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { getWeb3Provider } from "../apis/metamask";
-import ethers, { Signer } from "ethers";
-
+import { getWeb3Provider } from "../apis";
+import { ethers, Signer } from "ethers";
+import BigBoyTokenAbi from "../abis/BigBoyToken.json";
+import LotteryAbi from "../abis/Lottery.json";
+import { LotteryAddress, BBTAddress } from "../constants";
 declare global {
   interface Window {
     ethereum: any;
@@ -16,11 +18,14 @@ declare global {
 
 interface User {
   signer: Signer;
-  provider: ethers.providers.Web3Provider | null;
-  isMetaMaskConnected: Boolean;
+  provider: ethers.providers.Web3Provider;
+  BBT: ethers.Contract;
+  LotteryContract: ethers.Contract;
+  load: boolean;
+  loadMessage: string;
 }
 
-const BlockchainContext = createContext({} as User);
+const BlockchainContext = createContext({ load: false } as User);
 const UpdateBlockchainContext = createContext(
   {} as React.Dispatch<React.SetStateAction<User>>
 );
@@ -40,15 +45,28 @@ export default function ContextProvider({ children }: Props) {
   const [user, setUser] = useState<User>({} as User);
   useEffect(() => {
     // find and set the provider
-    async function setProvider() {
+    async function setUp() {
       if (window.ethereum !== undefined) {
-        const provider = getWeb3Provider(window.ethereum);
-        setUser((user) => ({ ...user, provider }));
-      } else {
-        setUser((user) => ({ ...user, provider: null }));
+        try {
+          const provider = getWeb3Provider(window.ethereum);
+          if (provider === null) return;
+          const BBT = new ethers.Contract(
+            BBTAddress,
+            JSON.stringify(BigBoyTokenAbi.abi),
+            provider as any
+          );
+          const LotteryContract = new ethers.Contract(
+            LotteryAddress,
+            JSON.stringify(LotteryAbi.abi),
+            provider as any
+          );
+          setUser((user) => ({ ...user, provider, BBT, LotteryContract }));
+        } catch (e) {
+          console.error(e);
+        }
       }
     }
-    setProvider();
+    setUp();
   }, []);
   return (
     <BlockchainContext.Provider value={user as User}>
