@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, TextField } from "@mui/material";
 import { useBlockchainContext, useUpdateBlockchainContext } from "./context";
-import { connectToMetamask, buyTickets } from "./apis";
+import { connectToMetamask, buyTickets, setManager } from "./apis";
 import Backdrop from "@mui/material/Backdrop";
 import CircularProgress from "@mui/material/CircularProgress";
 import "./App.css";
@@ -56,7 +56,7 @@ function App() {
       alert("Something went wrong");
     }
   }
-  async function handleMangerUpdate() {}
+
   function userIsOwner() {
     if (!user.provider) return null;
     try {
@@ -72,7 +72,9 @@ function App() {
                 setManager1(val);
               }}
             />
-            <Button onClick={() => handleMangerUpdate()}>Set Manager 1</Button>
+            <Button onClick={() => setManager(true, manager1, user)}>
+              Set Manager 1
+            </Button>
             <br />
             <br />
             <TextField
@@ -83,7 +85,9 @@ function App() {
                 setManager2(val);
               }}
             />
-            <Button onClick={() => handleMangerUpdate()}>Set Manager 2</Button>
+            <Button onClick={() => setManager(false, manager2, user)}>
+              Set Manager 2
+            </Button>
           </>
         );
       }

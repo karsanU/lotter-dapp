@@ -16,7 +16,7 @@ declare global {
   }
 }
 
-interface User {
+export interface User {
   signer: Signer;
   provider: ethers.providers.Web3Provider;
   BBT: ethers.Contract;

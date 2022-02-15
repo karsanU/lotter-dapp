@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { LotteryAddress } from "../constants";
+import { User } from "../context";
 export const getWeb3Provider = (
   provider: any
 ): ethers.providers.Web3Provider | null => {
@@ -59,3 +60,23 @@ const approveMaxToken = async (
     throw new Error("Failure to approve/confirm token usage");
   }
 };
+
+export async function setManager(
+  firstManager: boolean,
+  address: string,
+  user: User
+) {
+  console.log(address);
+  if (ethers.utils.isAddress(address)) {
+    const signer = user.provider.getSigner();
+    const lotteryContractWithSinger = user.LotteryContract.connect(signer);
+    try {
+      await lotteryContractWithSinger.setManger(firstManager, address);
+      alert("successfully sent set manager request");
+    } catch (e) {
+      alert(e);
+    }
+  } else {
+    alert("incorrect address double check");
+  }
+}
