@@ -65,8 +65,8 @@ describe("Lottery Contract", function () {
     await lottery.deployed();
 
     // set managers
-    await lottery.setManger(true, manager1.address);
-    await lottery.setManger(false, manager2.address);
+    await lottery.setManager(true, manager1.address);
+    await lottery.setManager(false, manager2.address);
 
     // send some bbt to everyone
     signers.forEach(async (wallet: SignerWithAddress) => {
@@ -79,13 +79,13 @@ describe("Lottery Contract", function () {
   });
 
   it("owner sets manager1 and manager2", async () => {
-    expect(await lottery.mangers(0)).to.equal(manager1.address);
-    expect(await lottery.mangers(1)).to.equal(manager2.address);
+    expect(await lottery.managers(0)).to.equal(manager1.address);
+    expect(await lottery.managers(1)).to.equal(manager2.address);
   });
 
   it("doesn't let non-owner change the managers", async () => {
     await expect(
-      lottery.connect(addrs[0]).setManger(true, manager1.address)
+      lottery.connect(addrs[0]).setManager(true, manager1.address)
     ).to.be.revertedWith("Sender is not owner.");
   });
 

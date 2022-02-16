@@ -23,9 +23,18 @@ export interface User {
   LotteryContract: ethers.Contract;
   load: boolean;
   loadMessage: string;
+  pricePool: string;
+  ticketPrice: string;
+  manager1: string;
+  manager2: string;
+  owner: string;
 }
 
-const BlockchainContext = createContext({ load: false } as User);
+const BlockchainContext = createContext({
+  load: false,
+  pricePool: "loading..",
+  ticketPrice: "loadings..",
+} as User);
 const UpdateBlockchainContext = createContext(
   {} as React.Dispatch<React.SetStateAction<User>>
 );
@@ -60,9 +69,25 @@ export default function ContextProvider({ children }: Props) {
             JSON.stringify(LotteryAbi.abi),
             provider as any
           );
-          setUser((user) => ({ ...user, provider, BBT, LotteryContract }));
+          const ticketPrice = await LotteryContract.ticketPrice();
+          const pricePool = await LotteryContract.pricePool();
+          const manager1 = await LotteryContract.managers(0);
+          const manager2 = await LotteryContract.managers(1);
+          const owner = await LotteryContract.owner();
+          console.log(ticketPrice, pricePool);
+          setUser((user) => ({
+            ...user,
+            provider,
+            BBT,
+            LotteryContract,
+            ticketPrice,
+            pricePool,
+            manager1,
+            manager2,
+            owner,
+          }));
         } catch (e) {
-          console.error(e);
+          alert(e);
         }
       }
     }

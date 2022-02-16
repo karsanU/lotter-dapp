@@ -17,18 +17,13 @@ export const connectToMetamask = async (
   await provider.send("eth_requestAccounts", []);
 };
 
-export const buyTickets = async (
-  provider: ethers.providers.Web3Provider,
-  bbtContract: ethers.Contract,
-  lotteryContract: ethers.Contract,
-  totalTickets: number
-) => {
-  const ticketPrice = parseInt(await lotteryContract.ticketPrice());
+export const buyTickets = async (totalTickets: number, user: User) => {
+  const ticketPrice = parseInt(await user.LotteryContract.ticketPrice());
   try {
     // check if it's already approved
-    await approveMaxToken(provider, bbtContract, ticketPrice * totalTickets);
-    const signer = provider.getSigner();
-    const lotteryContractWithSigner = lotteryContract.connect(signer);
+    await approveMaxToken(user.provider, user.BBT, ticketPrice * totalTickets);
+    const signer = user.provider.getSigner();
+    const lotteryContractWithSigner = user.LotteryContract.connect(signer);
     // enter the user with their tickets
     await lotteryContractWithSigner.enter(totalTickets);
   } catch (e) {
@@ -78,5 +73,16 @@ export async function setManager(
     }
   } else {
     alert("incorrect address double check");
+  }
+}
+
+export async function setTicketPrice(price: number, user: User) {
+  try {
+    const signer = user.provider.getSigner();
+    const lotteryContractWithSigner = user.LotteryContract.connect(signer);
+    lotteryContractWithSigner.setTicketPrice(price);
+    alert(`Update price request successfully sent`);
+  } catch {
+    alert("Something went wrong try agin");
   }
 }

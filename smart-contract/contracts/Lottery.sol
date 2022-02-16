@@ -8,7 +8,7 @@ import "hardhat/console.sol";
 contract Lottery {
     address payable public owner;
     IERC20 public bbt;
-    address[2] public mangers;
+    address[2] public managers;
     address[] public entries;
     uint256 public ticketPrice;
     uint256 public pricePool;
@@ -22,14 +22,14 @@ contract Lottery {
         lastDrawTime = block.timestamp;
     }
 
-    function setManger(bool firstManager, address newMaanagerAddress)
+    function setManager(bool firstManager, address newMaanagerAddress)
         public
         ownerAcess
     {
         if (firstManager) {
-            mangers[0] = newMaanagerAddress;
+            managers[0] = newMaanagerAddress;
         } else {
-            mangers[1] = newMaanagerAddress;
+            managers[1] = newMaanagerAddress;
         }
     }
 
@@ -79,8 +79,8 @@ contract Lottery {
     modifier managerAcess() {
         require(
             msg.sender == owner ||
-                mangers[0] == msg.sender ||
-                mangers[1] == msg.sender,
+                managers[0] == msg.sender ||
+                managers[1] == msg.sender,
             "Sender is not manager"
         );
         _;
