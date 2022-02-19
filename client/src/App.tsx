@@ -48,7 +48,7 @@ function App() {
         alert("Connection failed");
       }
     } else {
-      alert("Please install metamask");
+      alert("Provider not found");
     }
   }
 
