@@ -51,6 +51,7 @@ contract Lottery {
 
     function draw() public fiveMinsPassed managerAcess {
         // pick the sudo winner
+        require(entries.length > 0, "No one entered");
         uint256 index = random() % entries.length;
         address _winner = (entries[index]);
         // set the last drawn ltiem
