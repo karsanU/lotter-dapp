@@ -6,9 +6,11 @@ import {
   buyTickets,
   setManager,
   setTicketPrice,
+  drawLottery,
 } from "./apis";
 import Backdrop from "@mui/material/Backdrop";
 import CircularProgress from "@mui/material/CircularProgress";
+import { ethers, Signer } from "ethers";
 import "./App.css";
 
 function App() {
@@ -24,7 +26,6 @@ function App() {
   useEffect(() => {
     async function setLotteryInfo() {
       if (!user.provider) return;
-      console.log(user.provider);
       const signerAddress = user.provider.getSigner().getAddress();
       const userBBT = await user.BBT.balanceOf(signerAddress);
       setUserBBT(userBBT);
@@ -37,7 +38,12 @@ function App() {
     if (provider) {
       try {
         await connectToMetamask(provider);
-        alert("Connected");
+        let signer: Signer;
+        let loggedIn: boolean;
+        signer = provider.getSigner();
+        loggedIn = (await signer.getAddress()) !== null;
+        console.log(loggedIn);
+        updateUser({ ...user, signer, loggedIn });
       } catch (e) {
         alert("Connection failed");
       }
@@ -57,10 +63,9 @@ function App() {
   }
 
   function userIsOwner() {
-    if (!user.provider) return null;
+    if (!user.loggedIn) return null;
     try {
-      const userIsOwner = true;
-      if (userIsOwner) {
+      if (user.signerAddress === user.owner) {
         return (
           <Card sx={{ width: 300, display: "grid" }}>
             <CardContent>
@@ -73,7 +78,10 @@ function App() {
                   setManager1(val);
                 }}
               />
-              <Button onClick={() => setManager(true, manager1, user)}>
+              <Button
+                disabled={!ethers.utils.isAddress(manager1)}
+                onClick={() => setManager(true, manager1, user)}
+              >
                 Set Manager 1
               </Button>
               <br />
@@ -86,7 +94,10 @@ function App() {
                   setManager2(val);
                 }}
               />
-              <Button onClick={() => setManager(false, manager2, user)}>
+              <Button
+                disabled={!ethers.utils.isAddress(manager2)}
+                onClick={() => setManager(false, manager2, user)}
+              >
                 Set Manager 2
               </Button>
               <br />
@@ -113,7 +124,7 @@ function App() {
   }
 
   function userInfo() {
-    if (!user.provider)
+    if (!user.loggedIn)
       return (
         <Card sx={{ width: 300, display: "grid" }}>
           <p>must login with metamask to access account info...</p>
@@ -130,14 +141,29 @@ function App() {
   }
 
   function userIsManager() {
-    if (!user.provider) return "Draw the lottery";
+    if (!user.loggedIn) return null;
+    if (
+      ![user.owner, user.manager1, user.manager2].includes(user.signerAddress)
+    )
+      return null;
+    const rightNow = new Date().getTime();
+    const diff = Math.abs(user.lastDrawTime - rightNow);
+    const fiveMinPassed = diff / 1000 / 60 > 5.1;
     return (
       <Card sx={{ width: 300, display: "grid" }}>
         <h2> Manager </h2>
-        <p>You can draw the lottery: </p>
-        <Button onClick={() => setManager(false, manager2, user)}>
-          Draw the lottery now
-        </Button>
+        <p>
+          You can draw the lottery:
+          {fiveMinPassed ? " Now" : ` in ${5000 - diff / 1000} seconds`}{" "}
+        </p>
+        {
+          <Button
+            disabled={!fiveMinPassed || parseInt(user.pricePool) < 1}
+            onClick={() => drawLottery(user)}
+          >
+            Draw the lottery now
+          </Button>
+        }
       </Card>
     );
   }
@@ -153,18 +179,24 @@ function App() {
               <p>{`Ticket Price is: ${user.ticketPrice} BBT`}</p>
             </>
           )}
-          <TextField
-            label={"Total tickets "}
-            type={"number"}
-            value={totalTickets}
-            onChange={(event) => {
-              const val = Number(event.target.value);
-              val > 0 && setTotalTicket(val);
-            }}
-          />
-          <Button sx={{ mx: "auto" }} onClick={() => handleBuyTickets()}>
-            Buy Tickets
-          </Button>
+          {user.loggedIn ? (
+            <>
+              <TextField
+                label={"Total tickets "}
+                type={"number"}
+                value={totalTickets}
+                onChange={(event) => {
+                  const val = Number(event.target.value);
+                  val > 0 && setTotalTicket(val);
+                }}
+              />
+              <Button sx={{ mx: "auto" }} onClick={() => handleBuyTickets()}>
+                Buy Tickets
+              </Button>
+            </>
+          ) : (
+            <p> Must login with metamask to buy tickets...</p>
+          )}
         </CardContent>
       </Card>
     );
@@ -180,7 +212,7 @@ function App() {
           zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
         onClick={() => updateUser((user) => ({ ...user, load: false }))}
-        open={user.load}
+        open={user.load || false}
       >
         <CircularProgress color="inherit" />
         <p>{user.loadMessage}</p>

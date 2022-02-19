@@ -18,6 +18,7 @@ declare global {
 
 export interface User {
   signer: Signer;
+  signerAddress: string;
   provider: ethers.providers.Web3Provider;
   BBT: ethers.Contract;
   LotteryContract: ethers.Contract;
@@ -28,12 +29,15 @@ export interface User {
   manager1: string;
   manager2: string;
   owner: string;
+  lastDrawTime: number;
+  loggedIn: boolean;
 }
 
 const BlockchainContext = createContext({
   load: false,
   pricePool: "loading..",
   ticketPrice: "loadings..",
+  loggedIn: false,
 } as User);
 const UpdateBlockchainContext = createContext(
   {} as React.Dispatch<React.SetStateAction<User>>
@@ -74,7 +78,21 @@ export default function ContextProvider({ children }: Props) {
           const manager1 = await LotteryContract.managers(0);
           const manager2 = await LotteryContract.managers(1);
           const owner = await LotteryContract.owner();
-          console.log(ticketPrice, pricePool);
+          const lastDrawTime =
+            parseInt(await LotteryContract.lastDrawTime()) * 1000;
+          // try to get signer if user has logged in
+          let signer: Signer;
+          let loggedIn: boolean = false;
+          let signerAddress: string;
+          try {
+            signer = provider.getSigner();
+            if ((await provider.getSigner().getAddress()) !== null) {
+              signerAddress = await provider.getSigner().getAddress();
+              loggedIn = true;
+            }
+          } catch {
+            console.log(`unable to get signer, not logged in`);
+          }
           setUser((user) => ({
             ...user,
             provider,
@@ -84,7 +102,11 @@ export default function ContextProvider({ children }: Props) {
             pricePool,
             manager1,
             manager2,
+            lastDrawTime,
             owner,
+            signer,
+            loggedIn,
+            signerAddress,
           }));
         } catch (e) {
           alert(e);

@@ -66,8 +66,7 @@ export async function setManager(
     const signer = user.provider.getSigner();
     const lotteryContractWithSinger = user.LotteryContract.connect(signer);
     try {
-      await lotteryContractWithSinger.setManger(firstManager, address);
-      alert("successfully sent set manager request");
+      await lotteryContractWithSinger.setManager(firstManager, address);
     } catch (e) {
       alert(e);
     }
@@ -81,7 +80,16 @@ export async function setTicketPrice(price: number, user: User) {
     const signer = user.provider.getSigner();
     const lotteryContractWithSigner = user.LotteryContract.connect(signer);
     lotteryContractWithSigner.setTicketPrice(price);
-    alert(`Update price request successfully sent`);
+  } catch {
+    alert("Something went wrong try agin");
+  }
+}
+
+export async function drawLottery(user: User) {
+  try {
+    const signer = user.provider.getSigner();
+    const lotteryContractWithSigner = user.LotteryContract.connect(signer);
+    lotteryContractWithSigner.draw();
   } catch {
     alert("Something went wrong try agin");
   }
