@@ -15,7 +15,7 @@ contract BigBoyToken is
     ERC20Permit
 {
     constructor() ERC20("BigBoyToken", "BBT") ERC20Permit("BigBoyToken") {
-        _mint(msg.sender, 1000000);
+        _mint(msg.sender, 1000000 * 10**decimals());
     }
 
     function snapshot() public onlyOwner {
