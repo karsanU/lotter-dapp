@@ -8,7 +8,7 @@ import {
   Lottery,
   Lottery__factory,
 } from "../typechain";
-import { BigNumber } from "ethers";
+import { utils } from "ethers";
 
 describe("BBT Token Contract", function () {
   it("should assign the total supply of tokens to the owner at deployment", async function () {
@@ -31,12 +31,16 @@ let addrs: SignerWithAddress[];
 
 // helper functions
 async function buy1TicketWithAddrs(addressIndex: number) {
-  bigBoyToken.connect(addrs[addressIndex]).approve(lottery.address, 25);
+  bigBoyToken
+    .connect(addrs[addressIndex])
+    .approve(lottery.address, utils.parseEther("25"));
   await lottery.connect(addrs[addressIndex]).enter(1);
 }
 
 async function buy20TicketWithAddrs(addressIndex: number) {
-  bigBoyToken.connect(addrs[addressIndex]).approve(lottery.address, 25 * 20);
+  bigBoyToken
+    .connect(addrs[addressIndex])
+    .approve(lottery.address, utils.parseEther(String(25 * 20)));
   await lottery.connect(addrs[addressIndex]).enter(20);
 }
 
@@ -70,7 +74,7 @@ describe("Lottery Contract", function () {
 
     // send some bbt to everyone
     signers.forEach(async (wallet: SignerWithAddress) => {
-      await bigBoyToken.transfer(wallet.address, 10000);
+      await bigBoyToken.transfer(wallet.address, utils.parseEther("10000"));
     });
   });
 
@@ -94,12 +98,12 @@ describe("Lottery Contract", function () {
   });
 
   it("has initial ticket price of 25", async () => {
-    expect(await lottery.ticketPrice()).to.equal(25);
+    expect(await lottery.ticketPrice()).to.equal(utils.parseEther("25"));
   });
 
   it("lets owner set a new ticket price", async () => {
     await lottery.setTicketPrice(50);
-    expect(await lottery.ticketPrice()).to.equal(50);
+    expect(await lottery.ticketPrice()).to.equal(utils.parseEther("50"));
   });
 
   it("doesn't let non-owner set ticket price", async () => {
@@ -116,18 +120,20 @@ describe("Lottery Contract", function () {
   });
 
   it("doesn't let someone enter the lottery if min req bbt not approved", async () => {
-    bigBoyToken.connect(addrs[0]).approve(lottery.address, 24);
+    bigBoyToken
+      .connect(addrs[0])
+      .approve(lottery.address, utils.parseEther("24"));
     await expect(lottery.connect(addrs[0]).enter(1)).to.be.revertedWith(
-      "ERC20: transfer amount exceeds allowance"
+      "ERC20: insufficient allowance"
     );
   });
 
   it("correctly sets the pricePool", async () => {
     await buy1TicketWithAddrs(0);
-    expect((await lottery.pricePool())._hex).to.equal(BigNumber.from(25));
+    expect((await lottery.pricePool())._hex).to.equal(utils.parseEther("25"));
     await buy20TicketWithAddrs(1);
     expect((await lottery.pricePool())._hex).to.equal(
-      BigNumber.from(25 + 25 * 20)
+      utils.parseEther(String(25 + 25 * 20))
     );
   });
   it("lets only manager/owner draw the lotto ", async () => {
@@ -153,9 +159,8 @@ describe("Lottery Contract", function () {
     await lottery.draw();
     const someoneGotThePricePool = [0, 1, 2].some(async (index) => {
       const balance = await bigBoyToken.balanceOf(addrs[index].address);
-      return balance === BigNumber.from((60 * 25 * 100) / 95);
+      return balance === utils.parseEther(String((60 * 25 * 100) / 95));
     });
-
     expect(someoneGotThePricePool).to.equal(true);
   });
 });

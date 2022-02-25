@@ -1,6 +1,10 @@
 import { ethers } from "ethers";
+import { TransactionResponse } from "@ethersproject/abstract-provider";
+
 import { LotteryAddress } from "../constants";
 import { User } from "../context";
+import { transcode } from "buffer";
+
 export const getWeb3Provider = (
   provider: any
 ): ethers.providers.Web3Provider | null => {
@@ -17,41 +21,37 @@ export const connectToMetamask = async (
   await provider.send("eth_requestAccounts", []);
 };
 
-export const buyTickets = async (totalTickets: number, user: User) => {
-  const ticketPrice = parseInt(await user.LotteryContract.ticketPrice());
+export const buyTickets = async (
+  totalTickets: number,
+  user: User,
+  updateUser: React.Dispatch<React.SetStateAction<User>>
+) => {
   try {
-    // check if it's already approved
-    await approveMaxToken(user.provider, user.BBT, ticketPrice * totalTickets);
     const signer = user.provider.getSigner();
     const lotteryContractWithSigner = user.LotteryContract.connect(signer);
     // enter the user with their tickets
-    await lotteryContractWithSigner.enter(totalTickets);
+    const transaction = await lotteryContractWithSigner.enter(totalTickets);
+    waitForTransactionToFinish(transaction, updateUser);
   } catch (e) {
-    console.log(e);
+    console.error(e);
   }
 };
 
-const approveMaxToken = async (
-  provider: ethers.providers.Web3Provider,
-  bbtContract: ethers.Contract,
-  minTokensRequired: number
+export const approveMaxTokens = async (
+  user: User,
+  updateUser: React.Dispatch<React.SetStateAction<User>>
 ) => {
+  const { BBTContract, signer } = user;
   try {
-    const signer = provider.getSigner();
-    const signerAddress = await signer.getAddress();
-    const bbtWithSigner = bbtContract.connect(signer);
-    // check if it's already approved
-    const allowance = parseInt(
-      await bbtWithSigner.allowance(signerAddress, LotteryAddress)
+    const bbtWithSigner = BBTContract.connect(signer);
+    const transaction = await bbtWithSigner.approve(
+      LotteryAddress,
+      "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     );
-    if (allowance < minTokensRequired) {
-      await bbtWithSigner.approve(
-        LotteryAddress,
-        "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-      );
-    }
+    waitForTransactionToFinish(transaction, updateUser);
+    updateUser({ ...user, tokenTransactionApproved: true });
   } catch (e) {
-    console.log(e);
+    console.error(e);
     throw new Error("Failure to approve/confirm token usage");
   }
 };
@@ -59,38 +59,66 @@ const approveMaxToken = async (
 export async function setManager(
   firstManager: boolean,
   address: string,
-  user: User
+  user: User,
+  updateUser: React.Dispatch<React.SetStateAction<User>>
 ) {
   console.log(address);
   if (ethers.utils.isAddress(address)) {
     const signer = user.provider.getSigner();
     const lotteryContractWithSinger = user.LotteryContract.connect(signer);
     try {
-      await lotteryContractWithSinger.setManager(firstManager, address);
+      const transaction = await lotteryContractWithSinger.setManager(
+        firstManager,
+        address
+      );
+      waitForTransactionToFinish(transaction, updateUser);
     } catch (e) {
-      alert(e);
+      alert("updating manager failed");
     }
   } else {
     alert("incorrect address double check");
   }
 }
 
-export async function setTicketPrice(price: number, user: User) {
+export async function setTicketPrice(
+  price: number,
+  user: User,
+  updateUser: React.Dispatch<React.SetStateAction<User>>
+) {
   try {
     const signer = user.provider.getSigner();
     const lotteryContractWithSigner = user.LotteryContract.connect(signer);
-    lotteryContractWithSigner.setTicketPrice(price);
+    const transaction = lotteryContractWithSigner.setTicketPrice(price);
+    waitForTransactionToFinish(transaction, updateUser);
   } catch {
     alert("Something went wrong try agin");
   }
 }
 
-export async function drawLottery(user: User) {
+export async function drawLottery(
+  user: User,
+  updateUser: React.Dispatch<React.SetStateAction<User>>
+) {
   try {
     const signer = user.provider.getSigner();
     const lotteryContractWithSigner = user.LotteryContract.connect(signer);
-    lotteryContractWithSigner.draw();
+    const transaction = lotteryContractWithSigner.draw();
+    waitForTransactionToFinish(transaction, updateUser);
   } catch {
     alert("Something went wrong try agin");
+  }
+}
+
+async function waitForTransactionToFinish(
+  transaction: TransactionResponse,
+  updateUser: React.Dispatch<React.SetStateAction<User>>
+) {
+  try {
+    updateUser((user: User) => ({ ...user, load: true }));
+    await transaction.wait();
+    updateUser((user: User) => ({ ...user, load: false }));
+  } catch (e) {
+    updateUser((user: User) => ({ ...user, load: false }));
+    alert("transaction failed");
   }
 }

@@ -3,22 +3,21 @@
 pragma solidity ^0.8.2;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
 
 contract Lottery {
     address payable public owner;
     IERC20 public bbt;
     address[2] public managers;
     address[] public entries;
+    // todo change to hash map
     uint256 public ticketPrice;
     uint256 public pricePool;
     uint256 public lastDrawTime;
 
     constructor(IERC20 token) {
-        console.log("Deploying Lotterty. Owner: ", msg.sender);
         owner = payable(msg.sender);
         bbt = token;
-        ticketPrice = 25;
+        ticketPrice = 25 ether;
         lastDrawTime = block.timestamp;
     }
 
@@ -34,7 +33,7 @@ contract Lottery {
     }
 
     function setTicketPrice(uint256 _ticketPrice) public ownerAcess {
-        ticketPrice = _ticketPrice;
+        ticketPrice = _ticketPrice * 1 ether;
     }
 
     function enter(uint256 _totalTikets) public payable {

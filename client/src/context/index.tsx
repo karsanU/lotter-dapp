@@ -20,7 +20,7 @@ export interface User {
   signer: Signer;
   signerAddress: string;
   provider: ethers.providers.Web3Provider;
-  BBT: ethers.Contract;
+  BBTContract: ethers.Contract;
   LotteryContract: ethers.Contract;
   load: boolean;
   loadMessage: string;
@@ -30,14 +30,16 @@ export interface User {
   manager2: string;
   owner: string;
   lastDrawTime: number;
-  loggedIn: boolean;
+  connected: boolean;
+  tokenTransactionApproved: boolean;
 }
 
 const BlockchainContext = createContext({
   load: false,
   pricePool: "loading..",
   ticketPrice: "loadings..",
-  loggedIn: false,
+  connected: false,
+  tokenTransactionApproved: false,
 } as User);
 const UpdateBlockchainContext = createContext(
   {} as React.Dispatch<React.SetStateAction<User>>
@@ -63,7 +65,7 @@ export default function ContextProvider({ children }: Props) {
         try {
           const provider = getWeb3Provider(window.ethereum);
           if (provider === null) return;
-          const BBT = new ethers.Contract(
+          const BBTContract = new ethers.Contract(
             BBTAddress,
             JSON.stringify(BigBoyTokenAbi.abi),
             provider as any
@@ -78,17 +80,23 @@ export default function ContextProvider({ children }: Props) {
           const manager1 = await LotteryContract.managers(0);
           const manager2 = await LotteryContract.managers(1);
           const owner = await LotteryContract.owner();
+
           const lastDrawTime =
             parseInt(await LotteryContract.lastDrawTime()) * 1000;
           // try to get signer if user has logged in
           let signer: Signer;
-          let loggedIn: boolean = false;
+          let connected: boolean = false;
           let signerAddress: string;
+          let tokenTransactionApproved: boolean = false;
           try {
             signer = provider.getSigner();
             if ((await provider.getSigner().getAddress()) !== null) {
               signerAddress = await provider.getSigner().getAddress();
-              loggedIn = true;
+              connected = true;
+              tokenTransactionApproved =
+                parseInt(
+                  await BBTContract.allowance(signerAddress, LotteryAddress)
+                ) > 0;
             }
           } catch {
             console.log(`unable to get signer, not logged in`);
@@ -96,7 +104,7 @@ export default function ContextProvider({ children }: Props) {
           setUser((user) => ({
             ...user,
             provider,
-            BBT,
+            BBTContract,
             LotteryContract,
             ticketPrice,
             pricePool,
@@ -105,8 +113,9 @@ export default function ContextProvider({ children }: Props) {
             lastDrawTime,
             owner,
             signer,
-            loggedIn,
+            connected,
             signerAddress,
+            tokenTransactionApproved,
           }));
         } catch (e) {
           alert(e);
@@ -114,7 +123,7 @@ export default function ContextProvider({ children }: Props) {
       }
     }
     setUp();
-  }, []);
+  }, [user.load]);
   return (
     <BlockchainContext.Provider value={user as User}>
       <UpdateBlockchainContext.Provider value={setUser}>

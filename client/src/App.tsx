@@ -7,6 +7,7 @@ import {
   setManager,
   setTicketPrice,
   drawLottery,
+  approveMaxTokens,
 } from "./apis";
 import Backdrop from "@mui/material/Backdrop";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -25,13 +26,13 @@ function App() {
 
   useEffect(() => {
     async function setLotteryInfo() {
-      if (!user.provider) return;
-      const signerAddress = user.provider.getSigner().getAddress();
-      const userBBT = await user.BBT.balanceOf(signerAddress);
-      setUserBBT(userBBT);
+      const { signerAddress, connected } = user;
+      if (!connected) return;
+      const userBBT = await user.BBTContract.balanceOf(signerAddress);
+      setUserBBT(ethers.utils.formatEther(userBBT));
     }
     setLotteryInfo();
-  }, [user]);
+  }, [user, user.signer]);
 
   async function handleLoginWithMetaMask() {
     const { provider } = user;
@@ -39,11 +40,11 @@ function App() {
       try {
         await connectToMetamask(provider);
         let signer: Signer;
-        let loggedIn: boolean;
+        let connected: boolean;
         signer = provider.getSigner();
-        loggedIn = (await signer.getAddress()) !== null;
-        console.log(loggedIn);
-        updateUser({ ...user, signer, loggedIn });
+        connected = (await signer.getAddress()) !== null;
+        console.log(connected);
+        updateUser({ ...user, signer, connected });
       } catch (e) {
         alert("Connection failed");
       }
@@ -53,9 +54,8 @@ function App() {
   }
 
   async function handleBuyTickets() {
-    // approve tokens
     try {
-      buyTickets(totalTickets, user);
+      buyTickets(totalTickets, user, updateUser);
     } catch (e) {
       console.log(e);
       alert("Something went wrong");
@@ -63,7 +63,7 @@ function App() {
   }
 
   function userIsOwner() {
-    if (!user.loggedIn) return null;
+    if (!user.connected) return null;
     try {
       if (user.signerAddress === user.owner) {
         return (
@@ -80,7 +80,7 @@ function App() {
               />
               <Button
                 disabled={!ethers.utils.isAddress(manager1)}
-                onClick={() => setManager(true, manager1, user)}
+                onClick={() => setManager(true, manager1, user, updateUser)}
               >
                 Set Manager 1
               </Button>
@@ -96,7 +96,7 @@ function App() {
               />
               <Button
                 disabled={!ethers.utils.isAddress(manager2)}
-                onClick={() => setManager(false, manager2, user)}
+                onClick={() => setManager(false, manager2, user, updateUser)}
               >
                 Set Manager 2
               </Button>
@@ -111,7 +111,9 @@ function App() {
                   val > 0 && setNewTicketPrice(val);
                 }}
               />
-              <Button onClick={() => setTicketPrice(newTicketPrice, user)}>
+              <Button
+                onClick={() => setTicketPrice(newTicketPrice, user, updateUser)}
+              >
                 Set new ticket Price
               </Button>
             </CardContent>
@@ -124,7 +126,7 @@ function App() {
   }
 
   function userInfo() {
-    if (!user.loggedIn)
+    if (!user.connected)
       return (
         <Card sx={{ width: 300, display: "grid" }}>
           <p>must login with metamask to access account info...</p>
@@ -141,7 +143,7 @@ function App() {
   }
 
   function userIsManager() {
-    if (!user.loggedIn) return null;
+    if (!user.connected) return null;
     if (
       ![user.owner, user.manager1, user.manager2].includes(user.signerAddress)
     )
@@ -159,7 +161,7 @@ function App() {
         {
           <Button
             disabled={!fiveMinPassed || parseInt(user.pricePool) < 1}
-            onClick={() => drawLottery(user)}
+            onClick={() => drawLottery(user, updateUser)}
           >
             Draw the lottery now
           </Button>
@@ -179,7 +181,7 @@ function App() {
               <p>{`Ticket Price is: ${user.ticketPrice} BBT`}</p>
             </>
           )}
-          {user.loggedIn ? (
+          {user.connected ? (
             <>
               <TextField
                 label={"Total tickets "}
@@ -190,7 +192,25 @@ function App() {
                   val > 0 && setTotalTicket(val);
                 }}
               />
-              <Button sx={{ mx: "auto" }} onClick={() => handleBuyTickets()}>
+              {user.tokenTransactionApproved === false && (
+                <>
+                  <p>
+                    Must approve token transition for the Lottery before
+                    purchasing tickets
+                  </p>
+                  <Button
+                    sx={{ mx: "auto" }}
+                    onClick={() => approveMaxTokens(user, updateUser)}
+                  >
+                    Approve token transaction
+                  </Button>
+                </>
+              )}
+              <Button
+                disabled={!user.tokenTransactionApproved}
+                sx={{ mx: "auto" }}
+                onClick={() => handleBuyTickets()}
+              >
                 Buy Tickets
               </Button>
             </>
@@ -215,13 +235,15 @@ function App() {
         open={user.load || false}
       >
         <CircularProgress color="inherit" />
-        <p>{user.loadMessage}</p>
+        <p>Processing transaction...</p>
       </Backdrop>
       <div className="App">
         <Box sx={{ m: 2 }}>
-          <Button onClick={() => handleLoginWithMetaMask()}>
-            login with metamask
-          </Button>
+          {user.connected === false && (
+            <Button onClick={() => handleLoginWithMetaMask()}>
+              login with metamask
+            </Button>
+          )}
         </Box>
         <Grid
           spacing={2}
@@ -239,3 +261,5 @@ function App() {
 }
 
 export default App;
+
+// todo add a spinner,
