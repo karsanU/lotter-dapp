@@ -102,7 +102,7 @@ export async function drawLottery(
   try {
     const signer = user.provider.getSigner();
     const lotteryContractWithSigner = user.LotteryContract.connect(signer);
-    const transaction = lotteryContractWithSigner.draw();
+    const transaction = await lotteryContractWithSigner.draw();
     waitForTransactionToFinish(transaction, updateUser);
   } catch {
     alert("Something went wrong try agin");
