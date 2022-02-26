@@ -4,12 +4,24 @@ pragma solidity ^0.8.2;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+contract EntriesMapping {
+    mapping(uint256 => address) public entries;
+
+    function set(uint256 index, address addrs) public {
+        entries[index] = addrs;
+    }
+
+    function get(uint256 index) public view returns (address) {
+        return entries[index];
+    }
+}
+
 contract Lottery {
     address payable public owner;
     IERC20 public bbt;
     address[2] public managers;
-    address[] public entries;
-    // todo change to hash map
+    uint256 public totalEntries = 0;
+    EntriesMapping entries = new EntriesMapping();
     uint256 public ticketPrice;
     uint256 public pricePool;
     uint256 public lastDrawTime;
@@ -43,18 +55,23 @@ contract Lottery {
         /// add tokens to the current pool
         pricePool = pricePool + (ticketPrice * _totalTikets);
         /// enter the user _totalTikets number of times
-        for (uint256 i = 0; i < _totalTikets; i++) {
-            entries.push(msg.sender);
+        for (uint256 i = totalEntries; i < totalEntries + _totalTikets; i++) {
+            entries.set(i, msg.sender);
         }
+        totalEntries = totalEntries + _totalTikets;
+    }
+    
+    function getEntry(uint256 index) public view returns (address) {
+        return entries.get(index);
     }
 
     function draw() public fiveMinsPassed managerAcess {
         // pick the sudo winner
-        require(entries.length > 0, "No one entered");
-        uint256 index = random() % entries.length;
-        address _winner = (entries[index]);
+        require(totalEntries > 0, "No one entered");
+        uint256 randomIndex = random() % totalEntries;
+        address _winner = entries.get(randomIndex);
         // set the last drawn ltiem
-        entries = new address payable[](0);
+        entries = new EntriesMapping();
         lastDrawTime = block.timestamp;
         // send the coind to the winner after 5% maintaiance fee
         bbt.transfer(_winner, (pricePool * 95) / 100);
@@ -66,7 +83,11 @@ contract Lottery {
         return
             uint256(
                 keccak256(
-                    abi.encodePacked(block.difficulty, block.timestamp, entries)
+                    abi.encodePacked(
+                        block.difficulty,
+                        block.timestamp,
+                        totalEntries
+                    )
                 )
             );
     }

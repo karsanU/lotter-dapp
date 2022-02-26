@@ -114,9 +114,9 @@ describe("Lottery Contract", function () {
 
   it("lets someone enter the lottery", async () => {
     await buy1TicketWithAddrs(0);
-    expect(await lottery.entries(0)).to.equal(addrs[0].address);
+    expect(await lottery.getEntry(0)).to.equal(addrs[0].address);
     await buy20TicketWithAddrs(1);
-    expect(await lottery.entries(20)).to.equal(addrs[1].address);
+    expect(await lottery.getEntry(20)).to.equal(addrs[1].address);
   });
 
   it("doesn't let someone enter the lottery if min req bbt not approved", async () => {
