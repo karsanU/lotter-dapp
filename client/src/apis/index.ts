@@ -3,7 +3,6 @@ import { TransactionResponse } from "@ethersproject/abstract-provider";
 
 import { LotteryAddress } from "../constants";
 import { User } from "../context";
-import { transcode } from "buffer";
 
 export const getWeb3Provider = (
   provider: any
@@ -49,7 +48,6 @@ export const approveMaxTokens = async (
       "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     );
     waitForTransactionToFinish(transaction, updateUser);
-    updateUser({ ...user, tokenTransactionApproved: true });
   } catch (e) {
     console.error(e);
     throw new Error("Failure to approve/confirm token usage");
