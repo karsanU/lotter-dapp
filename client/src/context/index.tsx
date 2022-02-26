@@ -122,7 +122,11 @@ export default function ContextProvider({ children }: Props) {
             tokenTransactionApproved,
           }));
         } catch (e) {
-          alert(e);
+          if (window.ethereum.networkVersion !== "4") {
+            alert("Please switch to Rinkeby testnet");
+          } else {
+            alert("something went wrong try again");
+          }
         }
       }
     }
