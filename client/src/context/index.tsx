@@ -75,8 +75,12 @@ export default function ContextProvider({ children }: Props) {
             JSON.stringify(LotteryAbi.abi),
             provider as any
           );
-          const ticketPrice = await LotteryContract.ticketPrice();
-          const pricePool = await LotteryContract.pricePool();
+          const ticketPrice = ethers.utils.formatEther(
+            await LotteryContract.ticketPrice()
+          );
+          const pricePool = ethers.utils.formatEther(
+            await LotteryContract.pricePool()
+          );
           const manager1 = await LotteryContract.managers(0);
           const manager2 = await LotteryContract.managers(1);
           const owner = await LotteryContract.owner();
