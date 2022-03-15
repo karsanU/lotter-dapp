@@ -149,6 +149,20 @@ describe("Lottery Contract", function () {
     expect(await lottery.pricePool()).to.be.equal(0);
   });
 
+  it("draw twice", async () => {
+    await buy20TicketWithAddrs(0);
+    await buy20TicketWithAddrs(1);
+    await buy20TicketWithAddrs(2);
+    increaseBlockTimeBy5mins();
+    await lottery.connect(manager1).draw();
+    await buy20TicketWithAddrs(0);
+    await buy20TicketWithAddrs(1);
+    await buy20TicketWithAddrs(2);
+    increaseBlockTimeBy5mins();
+    await lottery.connect(manager1).draw();
+    expect(await lottery.pricePool()).to.be.equal(0);
+  });
+
   it("only allows lotto to be drawn 5 mins after the last draw", async () => {
     await buy20TicketWithAddrs(0);
     await buy20TicketWithAddrs(1);

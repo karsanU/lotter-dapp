@@ -60,7 +60,7 @@ contract Lottery {
         }
         totalEntries = totalEntries + _totalTikets;
     }
-    
+
     function getEntry(uint256 index) public view returns (address) {
         return entries.get(index);
     }
@@ -74,6 +74,7 @@ contract Lottery {
         entries = new EntriesMapping();
         lastDrawTime = block.timestamp;
         // send the coind to the winner after 5% maintaiance fee
+        totalEntries = 0;
         bbt.transfer(_winner, (pricePool * 95) / 100);
         // reset pricePool
         pricePool = 0;
