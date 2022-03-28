@@ -1,2 +1,2 @@
-export const LotteryAddress = "0xfD4bDE6f75909d9C85502823EBbe85E90d415E15";
-export const BBTAddress = "0x56B0EB7873BE0C265322e482323471eA1bE128f7";
+export const LotteryAddress = "0x66bD0F0711875E8475aa916210Af569Fd88fF1Cb";
+export const BBTAddress = "0xbEAC2BcFd87Fc6E53a05756b2E63dF90B9AA6Bed";

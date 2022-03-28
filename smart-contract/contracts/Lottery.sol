@@ -1,51 +1,58 @@
 //SPDX-License-Identifier: Unlicense
-
 pragma solidity ^0.8.2;
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
-contract EntriesMapping {
-    mapping(uint256 => address) public entries;
-
-    function set(uint256 index, address addrs) public {
-        entries[index] = addrs;
-    }
-
-    function get(uint256 index) public view returns (address) {
-        return entries[index];
-    }
-}
-
-contract Lottery {
-    address payable public owner;
-    IERC20 public bbt;
+contract Lottery is Ownable, AccessControl {
+    bytes32 public constant OWNER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     address[2] public managers;
+    IERC20 public bbt;
+    uint256 public totalLotteries = 0;
     uint256 public totalEntries = 0;
-    EntriesMapping entries = new EntriesMapping();
+    mapping(uint256 => mapping(uint256 => address)) public entries;
     uint256 public ticketPrice;
     uint256 public pricePool;
     uint256 public lastDrawTime;
 
     constructor(IERC20 token) {
-        owner = payable(msg.sender);
         bbt = token;
         ticketPrice = 25 ether;
         lastDrawTime = block.timestamp;
+        _grantRole(OWNER_ROLE, msg.sender);
+        _setRoleAdmin(MANAGER_ROLE, OWNER_ROLE);
+        grantRole(MANAGER_ROLE, msg.sender);
     }
 
-    function setManager(bool firstManager, address newMaanagerAddress)
+    function setManager(bool isFirstManager, address newManagerAddress)
         public
-        ownerAcess
+        onlyOwner
     {
-        if (firstManager) {
-            managers[0] = newMaanagerAddress;
+        if (isFirstManager) {
+            if (address(0) != managers[0])
+                revokeRole(MANAGER_ROLE, managers[0]);
+            grantRole(MANAGER_ROLE, newManagerAddress);
+            managers[0] = newManagerAddress;
         } else {
-            managers[1] = newMaanagerAddress;
+            if (address(0) != managers[0])
+                revokeRole(MANAGER_ROLE, managers[1]);
+            grantRole(MANAGER_ROLE, newManagerAddress);
+            managers[1] = newManagerAddress;
         }
     }
 
-    function setTicketPrice(uint256 _ticketPrice) public ownerAcess {
+    function setTicketPrice(uint256 _ticketPrice) public onlyOwner {
         ticketPrice = _ticketPrice * 1 ether;
+    }
+
+    function getEntry(uint256 lotteryIndex, uint256 entryIndex)
+        public
+        view
+        returns (address)
+    {
+        return entries[lotteryIndex][entryIndex];
     }
 
     function enter(uint256 _totalTikets) public payable {
@@ -56,25 +63,21 @@ contract Lottery {
         pricePool = pricePool + (ticketPrice * _totalTikets);
         /// enter the user _totalTikets number of times
         for (uint256 i = totalEntries; i < totalEntries + _totalTikets; i++) {
-            entries.set(i, msg.sender);
+            entries[totalLotteries][i] = msg.sender;
         }
         totalEntries = totalEntries + _totalTikets;
-    }
-
-    function getEntry(uint256 index) public view returns (address) {
-        return entries.get(index);
     }
 
     function draw() public fiveMinsPassed managerAcess {
         // pick the sudo winner
         require(totalEntries > 0, "No one entered");
         uint256 randomIndex = random() % totalEntries;
-        address _winner = entries.get(randomIndex);
-        // set the last drawn ltiem
-        entries = new EntriesMapping();
+        address _winner = entries[totalLotteries][randomIndex];
+        // reset
         lastDrawTime = block.timestamp;
-        // send the coind to the winner after 5% maintaiance fee
         totalEntries = 0;
+        totalLotteries += 1;
+        // send the coind to the winner after 5% maintaiance fee
         bbt.transfer(_winner, (pricePool * 95) / 100);
         // reset pricePool
         pricePool = 0;
@@ -93,16 +96,9 @@ contract Lottery {
             );
     }
 
-    modifier ownerAcess() {
-        require(msg.sender == owner, "Sender is not owner.");
-        _;
-    }
-
     modifier managerAcess() {
         require(
-            msg.sender == owner ||
-                managers[0] == msg.sender ||
-                managers[1] == msg.sender,
+            hasRole(MANAGER_ROLE, msg.sender) || owner() == msg.sender,
             "Sender is not manager"
         );
         _;

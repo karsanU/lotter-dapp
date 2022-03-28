@@ -90,7 +90,7 @@ describe("Lottery Contract", function () {
   it("doesn't let non-owner change the managers", async () => {
     await expect(
       lottery.connect(addrs[0]).setManager(true, manager1.address)
-    ).to.be.revertedWith("Sender is not owner.");
+    ).to.be.revertedWith("Ownable: caller is not the owner");
   });
 
   it("correctly sets token for pricePool", async () => {
@@ -109,14 +109,14 @@ describe("Lottery Contract", function () {
   it("doesn't let non-owner set ticket price", async () => {
     await expect(
       lottery.connect(addrs[0]).setTicketPrice(50)
-    ).to.be.revertedWith("Sender is not owner.");
+    ).to.be.revertedWith("Ownable: caller is not the owner");
   });
 
   it("lets someone enter the lottery", async () => {
     await buy1TicketWithAddrs(0);
-    expect(await lottery.getEntry(0)).to.equal(addrs[0].address);
+    expect(await lottery.getEntry(0, 0)).to.equal(addrs[0].address);
     await buy20TicketWithAddrs(1);
-    expect(await lottery.getEntry(20)).to.equal(addrs[1].address);
+    expect(await lottery.getEntry(0, 20)).to.equal(addrs[1].address);
   });
 
   it("doesn't let someone enter the lottery if min req bbt not approved", async () => {
@@ -136,7 +136,7 @@ describe("Lottery Contract", function () {
       utils.parseEther(String(25 + 25 * 20))
     );
   });
-  it("lets only manager/owner draw the lotto ", async () => {
+  it("lets only manager/owner draw the lotto", async () => {
     await buy20TicketWithAddrs(0);
     await buy20TicketWithAddrs(1);
     await buy20TicketWithAddrs(2);
@@ -152,7 +152,7 @@ describe("Lottery Contract", function () {
   it("draw twice", async () => {
     await buy20TicketWithAddrs(0);
     await buy20TicketWithAddrs(1);
-    await buy20TicketWithAddrs(2);
+    await buy20TicketWithAddrs(3);
     increaseBlockTimeBy5mins();
     await lottery.connect(manager1).draw();
     await buy20TicketWithAddrs(0);
@@ -161,6 +161,11 @@ describe("Lottery Contract", function () {
     increaseBlockTimeBy5mins();
     await lottery.connect(manager1).draw();
     expect(await lottery.pricePool()).to.be.equal(0);
+    expect(await lottery.getEntry(0, 59)).to.equal(addrs[3].address);
+    expect(await lottery.getEntry(1, 59)).to.equal(addrs[2].address);
+    expect(await lottery.getEntry(1, 60)).to.equal(
+      "0x0000000000000000000000000000000000000000"
+    );
   });
 
   it("only allows lotto to be drawn 5 mins after the last draw", async () => {
@@ -168,7 +173,6 @@ describe("Lottery Contract", function () {
     await buy20TicketWithAddrs(1);
     await buy20TicketWithAddrs(2);
     await expect(lottery.draw()).to.be.revertedWith("5 minutes has to pass.");
-
     increaseBlockTimeBy5mins();
     await lottery.draw();
     const someoneGotThePricePool = [0, 1, 2].some(async (index) => {

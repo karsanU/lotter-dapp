@@ -55,7 +55,7 @@ export const approveMaxTokens = async (
 };
 
 export async function setManager(
-  firstManager: boolean,
+  isFirstManager: boolean,
   address: string,
   user: User,
   updateUser: React.Dispatch<React.SetStateAction<User>>
@@ -66,7 +66,7 @@ export async function setManager(
     const lotteryContractWithSinger = user.LotteryContract.connect(signer);
     try {
       const transaction = await lotteryContractWithSinger.setManager(
-        firstManager,
+        isFirstManager,
         address
       );
       waitForTransactionToFinish(transaction, updateUser);

@@ -156,7 +156,7 @@ function App() {
         <h2> Manager </h2>
         <p>
           You can draw the lottery:
-          {fiveMinPassed ? " Now" : ` in ${5000 - diff / 1000} seconds`}{" "}
+          {fiveMinPassed ? " Now" : ` in ${5000 - diff / 1000} seconds`}
         </p>
         {
           <Button
@@ -261,5 +261,3 @@ function App() {
 }
 
 export default App;
-
-// todo add a spinner,
